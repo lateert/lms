@@ -1,0 +1,118 @@
+type Query {
+    catalog(filter: CatalogFilterInput): [Course!]!
+    course(id: ID!): Course
+    me: User!
+    myEnrollments: [Enrollment!]!
+    myProgress(courseId: ID!): Progress!
+    myNotifications: [Notification!]!
+    attemptJournal(courseId: ID!): [Attempt!]!
+    courseAnalytics(courseId: ID!): CourseAnalytics!
+    learningHistory: [Enrollment!]!
+}
+
+input CatalogFilterInput {
+    categoryId: ID
+    difficulty: String
+    sortBy: String
+}
+
+type User {
+    id: ID!
+    email: String!
+    fullName: String!
+    status: String!
+    roles: [String!]!
+}
+
+type Category {
+    id: ID!
+    name: String!
+    description: String
+}
+
+type Course {
+    id: ID!
+    title: String!
+    difficulty: String!
+    status: String!
+    rating: Float!
+    authorId: ID!
+    category: Category!
+    modules: [Module!]!
+    assignments: [Assignment!]!
+}
+
+type Module {
+    id: ID!
+    title: String!
+    sortOrder: Int!
+    lessons: [Lesson!]!
+}
+
+type Lesson {
+    id: ID!
+    title: String!
+    contentType: String!
+    sortOrder: Int!
+}
+
+type Assignment {
+    id: ID!
+    lessonId: ID!
+    title: String!
+    deadline: String!
+    maxScore: Float!
+}
+
+type Enrollment {
+    id: ID!
+    studentId: ID!
+    courseId: ID!
+    status: String!
+    enrolledAt: String!
+    course: Course
+    progress: Progress
+}
+
+type Attempt {
+    id: ID!
+    assignmentId: ID!
+    studentId: ID!
+    submittedAt: String!
+    content: String!
+    status: String!
+    assignment: Assignment!
+    grade: Grade
+}
+
+type Grade {
+    id: ID!
+    attemptId: ID!
+    teacherId: ID!
+    score: Float!
+    comment: String!
+    gradedAt: String!
+}
+
+type Progress {
+    id: ID!
+    enrollmentId: ID!
+    percent: Float!
+    updatedAt: String!
+}
+
+type Notification {
+    id: ID!
+    recipientId: ID!
+    type: String!
+    text: String!
+    isRead: Boolean!
+    createdAt: String!
+}
+
+type CourseAnalytics {
+    courseId: ID!
+    enrollCount: Int!
+    avgScore: Float!
+    updatedAt: String!
+}

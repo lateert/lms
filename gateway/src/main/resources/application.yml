@@ -1,0 +1,19 @@
+server:
+  port: 8080
+
+spring:
+  graphql:
+    graphiql:
+      enabled: false
+    path: /graphql
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+
+lms:
+  db:
+    host: localhost
+    port: 5433
+    username: lms
+    password: lms

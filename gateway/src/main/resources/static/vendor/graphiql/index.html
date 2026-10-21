@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8"/>
+    <title>GraphiQL</title>
+    <style>
+        body { height: 100%; margin: 0; width: 100%; overflow: hidden; }
+        #graphiql { height: 100vh; }
+    </style>
+    <link rel="stylesheet" href="/vendor/graphiql/graphiql.min.css"/>
+    <script src="/vendor/graphiql/react.production.min.js"></script>
+    <script src="/vendor/graphiql/react-dom.production.min.js"></script>
+    <script src="/vendor/graphiql/graphiql.min.js"></script>
+</head>
+<body>
+<div id="graphiql">Loading...</div>
+<script>
+    const params = new URLSearchParams(window.location.search);
+    let path = params.get("path") || "/graphql";
+    if (path === "/graphiql" || path.indexOf("graphiql") !== -1) {
+        path = "/graphql";
+    }
+    const shots = {
+        catalog: "query {\n  catalog { id title status }\n  me { email fullName roles }\n}\n",
+        course: "query {\n  course(id: \"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa\") {\n    title difficulty status rating\n    category { name }\n    modules { title sortOrder lessons { title contentType } }\n    assignments { title maxScore deadline }\n  }\n}\n",
+        student: "query {\n  myEnrollments { status course { title } }\n  myProgress(courseId: \"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa\") { percent }\n  attemptJournal(courseId: \"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa\") {\n    content status grade { score comment }\n  }\n  courseAnalytics(courseId: \"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa\") { enrollCount avgScore }\n  myNotifications { type text isRead }\n}\n",
+        missing: "query {\n  course(id: \"00000000-0000-0000-0000-000000000000\") { id title }\n}\n"
+    };
+    const shot = params.get("shot");
+    const defaultQuery = (shot && shots[shot]) ? shots[shot] : shots.catalog;
+    const url = location.protocol + "//" + location.host + path;
+    const fetcher = GraphiQL.createFetcher({ url: url });
+    const root = ReactDOM.createRoot(document.getElementById("graphiql"));
+    root.render(React.createElement(GraphiQL, {
+        fetcher: fetcher,
+        defaultQuery: defaultQuery
+    }));
+    if (params.get("run") === "1") {
+        const click = () => {
+            const btn = document.querySelector(".graphiql-execute-button")
+                || document.querySelector('button[aria-label="Execute query"]')
+                || document.querySelector('button[title="Execute query"]');
+            if (btn) btn.click();
+            else setTimeout(click, 200);
+        };
+        setTimeout(click, 600);
+    }
+</script>
+</body>
+</html>
