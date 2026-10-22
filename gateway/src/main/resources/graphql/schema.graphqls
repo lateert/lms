@@ -1,19 +1,118 @@
 type Query {
-    catalog(filter: CatalogFilterInput): [Course!]!
+    catalog(filter: CatalogFilterInput, sort: CourseSortInput): [Course!]!
+    catalogSummary(filter: CatalogFilterInput): CatalogSummary!
     course(id: ID!): Course
     me: User!
-    myEnrollments: [Enrollment!]!
+    myEnrollments(status: String): [Enrollment!]!
     myProgress(courseId: ID!): Progress!
-    myNotifications: [Notification!]!
-    attemptJournal(courseId: ID!): [Attempt!]!
+    myNotifications(unreadOnly: Boolean = false): [Notification!]!
+    attemptJournal(courseId: ID!, filter: AttemptFilterInput, order: SortDirection = DESC): [Attempt!]!
+    attemptSummary(courseId: ID!): AttemptSummary!
     courseAnalytics(courseId: ID!): CourseAnalytics!
     learningHistory: [Enrollment!]!
+}
+
+type Mutation {
+    register(input: RegisterInput!): AuthPayload!
+    login(input: LoginInput!): AuthPayload!
+    assignRole(input: AssignRoleInput!): User!
+    createCourse(input: CreateCourseInput!): Course!
+    addModule(input: AddModuleInput!): Module!
+    addLesson(input: AddLessonInput!): Lesson!
+    publishCourse(courseId: ID!): Course!
+    addAssignment(input: AddAssignmentInput!): Assignment!
+    enrollCourse(courseId: ID!): Enrollment!
+    dropCourse(courseId: ID!): Enrollment!
+    completeLesson(lessonId: ID!): Progress!
+    submitAttempt(input: SubmitAttemptInput!): Attempt!
+    gradeAttempt(input: GradeAttemptInput!): Attempt!
+    markNotificationRead(id: ID!): Notification!
+}
+
+enum CourseSortField {
+    TITLE
+    RATING
+}
+
+enum SortDirection {
+    ASC
+    DESC
 }
 
 input CatalogFilterInput {
     categoryId: ID
     difficulty: String
-    sortBy: String
+    search: String
+    minRating: Float
+}
+
+input CourseSortInput {
+    field: CourseSortField!
+    direction: SortDirection = ASC
+}
+
+input AttemptFilterInput {
+    status: String
+    assignmentId: ID
+    studentId: ID
+}
+
+input RegisterInput {
+    email: String!
+    password: String!
+    fullName: String!
+}
+
+input LoginInput {
+    email: String!
+    password: String!
+}
+
+input AssignRoleInput {
+    userId: ID!
+    roleCode: String!
+}
+
+input CreateCourseInput {
+    categoryId: ID!
+    title: String!
+    difficulty: String!
+}
+
+input AddModuleInput {
+    courseId: ID!
+    title: String!
+    sortOrder: Int
+}
+
+input AddLessonInput {
+    moduleId: ID!
+    title: String!
+    contentType: String!
+    sortOrder: Int
+}
+
+input AddAssignmentInput {
+    lessonId: ID!
+    title: String!
+    deadline: String!
+    maxScore: Float!
+}
+
+input SubmitAttemptInput {
+    assignmentId: ID!
+    content: String!
+}
+
+input GradeAttemptInput {
+    attemptId: ID!
+    score: Float!
+    comment: String
+}
+
+type AuthPayload {
+    token: String!
+    user: User!
 }
 
 type User {
@@ -110,9 +209,30 @@ type Notification {
     createdAt: String!
 }
 
+type CatalogSummary {
+    total: Int!
+    avgRating: Float!
+    byDifficulty: [DifficultyCount!]!
+}
+
+type DifficultyCount {
+    difficulty: String!
+    count: Int!
+}
+
+type AttemptSummary {
+    courseId: ID!
+    total: Int!
+    pending: Int!
+    graded: Int!
+    averageScore: Float!
+    averagePercent: Float!
+}
+
 type CourseAnalytics {
     courseId: ID!
     enrollCount: Int!
     avgScore: Float!
+    gradeCount: Int!
     updatedAt: String!
 }

@@ -4,24 +4,28 @@ import com.lms.analytics.AnalyticsService;
 import com.lms.assessment.AssessmentService;
 import com.lms.catalog.CatalogService;
 import com.lms.enrollment.EnrollmentService;
+import com.lms.notification.NotificationService;
+import com.lms.progress.ProgressService;
+import com.lms.shared.UserSnapshot;
+import com.lms.shared.input.AttemptFilterInput;
+import com.lms.shared.input.CatalogFilterInput;
+import com.lms.shared.input.CourseSortInput;
+import com.lms.shared.input.SortDirection;
 import com.lms.shared.view.AssignmentView;
+import com.lms.shared.view.AttemptSummaryView;
 import com.lms.shared.view.AttemptView;
-import com.lms.shared.view.CatalogFilterInput;
+import com.lms.shared.view.CatalogSummaryView;
 import com.lms.shared.view.CourseAnalyticsView;
 import com.lms.shared.view.CourseView;
 import com.lms.shared.view.EnrollmentView;
 import com.lms.shared.view.NotificationView;
 import com.lms.shared.view.ProgressView;
 import com.lms.shared.view.UserView;
-import com.lms.notification.NotificationService;
-import com.lms.progress.ProgressService;
-import com.lms.shared.AppException;
-import com.lms.shared.UserSnapshot;
+import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.ContextValue;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
@@ -37,11 +41,13 @@ public class QueryController {
     private final AnalyticsService analytics;
 
     @QueryMapping
-    public List<CourseView> catalog(@Argument CatalogFilterInput filter) {
-        String categoryId = filter == null ? null : filter.categoryId();
-        String difficulty = filter == null ? null : filter.difficulty();
-        String sortBy = filter == null ? null : filter.sortBy();
-        return catalog.listPublished(categoryId, difficulty, sortBy);
+    public List<CourseView> catalog(@Argument CatalogFilterInput filter, @Argument CourseSortInput sort) {
+        return catalog.listPublished(filter, sort);
+    }
+
+    @QueryMapping
+    public CatalogSummaryView catalogSummary(@Argument CatalogFilterInput filter) {
+        return catalog.summary(filter);
     }
 
     @QueryMapping
@@ -51,29 +57,39 @@ public class QueryController {
 
     @QueryMapping
     public UserView me(@ContextValue(name = "user", required = false) UserSnapshot user) {
-        return UserView.from(requireUser(user));
+        return UserView.from(Actors.require(user));
     }
 
     @QueryMapping
-    public List<EnrollmentView> myEnrollments(@ContextValue(name = "user", required = false) UserSnapshot user) {
-        return enrollment.listForStudent(requireUser(user).id());
+    public List<EnrollmentView> myEnrollments(@Argument String status,
+                                              @ContextValue(name = "user", required = false) UserSnapshot user) {
+        return enrollment.listForStudent(Actors.require(user).id(), status);
     }
 
     @QueryMapping
     public ProgressView myProgress(@Argument String courseId,
                                    @ContextValue(name = "user", required = false) UserSnapshot user) {
-        return progress.getForCourse(requireUser(user).id(), courseId);
+        return progress.getForCourse(Actors.require(user).id(), courseId);
     }
 
     @QueryMapping
-    public List<NotificationView> myNotifications(@ContextValue(name = "user", required = false) UserSnapshot user) {
-        return notification.listFor(requireUser(user).id());
+    public List<NotificationView> myNotifications(@Argument Boolean unreadOnly,
+                                                  @ContextValue(name = "user", required = false) UserSnapshot user) {
+        return notification.listFor(Actors.require(user).id(), Boolean.TRUE.equals(unreadOnly));
     }
 
     @QueryMapping
     public List<AttemptView> attemptJournal(@Argument String courseId,
+                                            @Argument AttemptFilterInput filter,
+                                            @Argument SortDirection order,
                                             @ContextValue(name = "user", required = false) UserSnapshot user) {
-        return assessment.attemptJournal(requireUser(user).id(), courseId);
+        return assessment.attemptJournal(Actors.require(user), courseId, filter, order);
+    }
+
+    @QueryMapping
+    public AttemptSummaryView attemptSummary(@Argument String courseId,
+                                             @ContextValue(name = "user", required = false) UserSnapshot user) {
+        return assessment.attemptSummary(Actors.require(user), courseId);
     }
 
     @QueryMapping
@@ -83,7 +99,7 @@ public class QueryController {
 
     @QueryMapping
     public List<EnrollmentView> learningHistory(@ContextValue(name = "user", required = false) UserSnapshot user) {
-        return enrollment.listForStudent(requireUser(user).id());
+        return enrollment.listForStudent(Actors.require(user).id(), null);
     }
 
     @SchemaMapping(typeName = "Course", field = "assignments")
@@ -93,13 +109,6 @@ public class QueryController {
 
     @SchemaMapping(typeName = "Enrollment", field = "progress")
     public ProgressView progress(EnrollmentView enrollment) {
-        return this.progress.getByEnrollmentId(enrollment.id());
-    }
-
-    private UserSnapshot requireUser(UserSnapshot user) {
-        if (user == null) {
-            throw AppException.unauthorized("Сессия недействительна");
-        }
-        return user;
+        return progress.findByEnrollmentId(enrollment.id());
     }
 }
