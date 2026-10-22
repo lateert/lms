@@ -23,6 +23,8 @@ public class CourseStatEntity {
     private int enrollCount;
     @Column(name = "avg_score", nullable = false)
     private double avgScore;
+    @Column(name = "grade_count", nullable = false)
+    private int gradeCount;
     @Column(name = "updated_at", nullable = false)
     private String updatedAt;
 }

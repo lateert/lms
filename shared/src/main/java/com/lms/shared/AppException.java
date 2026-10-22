@@ -20,6 +20,14 @@ public class AppException extends RuntimeException {
         return new AppException(message, "FORBIDDEN");
     }
 
+    public static AppException badRequest(String message) {
+        return new AppException(message, "BAD_REQUEST");
+    }
+
+    public static AppException conflict(String message) {
+        return new AppException(message, "CONFLICT");
+    }
+
     public String getCode() {
         return code;
     }

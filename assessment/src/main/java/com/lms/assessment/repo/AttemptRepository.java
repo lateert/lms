@@ -8,4 +8,8 @@ import java.util.List;
 
 public interface AttemptRepository extends JpaRepository<AttemptEntity, String> {
     List<AttemptEntity> findByStudentIdAndAssignmentLessonIdIn(String studentId, Collection<String> lessonIds);
+
+    List<AttemptEntity> findByAssignmentLessonIdIn(Collection<String> lessonIds);
+
+    boolean existsByStudentIdAndAssignment_IdAndStatus(String studentId, String assignmentId, String status);
 }

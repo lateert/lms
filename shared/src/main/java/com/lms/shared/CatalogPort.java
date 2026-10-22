@@ -9,6 +9,8 @@ public interface CatalogPort {
 
     boolean lessonExists(String lessonId);
 
+    String lessonCourseId(String lessonId);
+
     List<String> listLessonIds(String courseId);
 
     CourseCounts getCourseCounts(String courseId);
