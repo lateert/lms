@@ -10,6 +10,10 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: update
+  data:
+    redis:
+      host: localhost
+      port: 6379
 
 lms:
   db:
@@ -17,3 +21,6 @@ lms:
     port: 5433
     username: lms
     password: lms
+  auth:
+    jwt-secret: lms-lab-jwt-secret-key-32bytes!!
+    session-ttl: 2h

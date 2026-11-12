@@ -25,16 +25,26 @@ class GraphqlQueryTest {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Object> gql(String query, Map<String, Object> variables, String userId) {
+    private Map<String, Object> gql(String query, Map<String, Object> variables, String token) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        if (userId != null) {
-            headers.set("X-User-Id", userId);
+        if (token != null) {
+            headers.setBearerAuth(token);
         }
         Map<String, Object> body = Map.of("query", query, "variables", variables);
         ResponseEntity<Map> response = rest.postForEntity("/graphql", new HttpEntity<>(body, headers), Map.class);
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
         return response.getBody();
+    }
+
+    @SuppressWarnings("unchecked")
+    private String studentToken() {
+        Map<String, Object> body = data(gql(
+                "mutation($in: LoginInput!) { login(input: $in) { token } }",
+                Map.of("in", Map.of("email", "student@lms.local", "password", Ids.DEMO_PASSWORD)),
+                null
+        ));
+        return (String) ((Map<String, Object>) body.get("login")).get("token");
     }
 
     @Test
@@ -55,37 +65,38 @@ class GraphqlQueryTest {
 
     @Test
     void studentQueries() {
-        assertThat(data(gql("{ me { email fullName roles } }")).get("me").toString())
+        String token = studentToken();
+        assertThat(data(gql("{ me { email fullName roles } }", Map.of(), token)).get("me").toString())
                 .contains("student@lms.local");
-        assertThat(data(gql("{ myEnrollments { status course { title } } }")).toString())
+        assertThat(data(gql("{ myEnrollments { status course { title } } }", Map.of(), token)).toString())
                 .contains("Основы Python");
         assertThat(data(gql(
                 "query($id: ID!) { myProgress(courseId: $id) { percent } }",
                 Map.of("id", Ids.COURSE),
-                null
+                token
         )).toString()).contains("50");
-        assertThat(data(gql("{ myNotifications { type } }")).toString()).contains("GradeAssigned");
+        assertThat(data(gql("{ myNotifications { type } }", Map.of(), token)).toString()).contains("GradeAssigned");
         assertThat(data(gql(
                 "query($id: ID!) { attemptJournal(courseId: $id) { grade { score } } }",
                 Map.of("id", Ids.COURSE),
-                null
+                token
         )).toString()).contains("8");
         assertThat(data(gql(
                 "query($id: ID!) { courseAnalytics(courseId: $id) { enrollCount } }",
                 Map.of("id", Ids.COURSE),
-                null
+                token
         )).toString()).contains("1");
     }
 
     @Test
     void errors() {
-        Map<String, Object> badUser = gql("{ me { email } }", Map.of(), "not-a-user");
-        assertThat(badUser.get("errors")).isNotNull();
+        Map<String, Object> anonymous = gql("{ me { email } }");
+        assertThat(anonymous.get("errors")).isNotNull();
 
         Map<String, Object> noProgress = gql(
                 "query($id: ID!) { myProgress(courseId: $id) { percent } }",
                 Map.of("id", Ids.DRAFT_COURSE),
-                null
+                studentToken()
         );
         assertThat(noProgress.get("errors")).isNotNull();
     }

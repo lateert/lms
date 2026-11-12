@@ -15,6 +15,7 @@ type Query {
 type Mutation {
     register(input: RegisterInput!): AuthPayload!
     login(input: LoginInput!): AuthPayload!
+    logout: Boolean!
     assignRole(input: AssignRoleInput!): User!
     createCourse(input: CreateCourseInput!): Course!
     addModule(input: AddModuleInput!): Module!
@@ -113,6 +114,7 @@ input GradeAttemptInput {
 type AuthPayload {
     token: String!
     user: User!
+    expiresAt: String!
 }
 
 type User {

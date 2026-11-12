@@ -93,7 +93,9 @@ public class QueryController {
     }
 
     @QueryMapping
-    public CourseAnalyticsView courseAnalytics(@Argument String courseId) {
+    public CourseAnalyticsView courseAnalytics(@Argument String courseId,
+                                               @ContextValue(name = "user", required = false) UserSnapshot user) {
+        Actors.require(user);
         return analytics.courseAnalytics(courseId);
     }
 

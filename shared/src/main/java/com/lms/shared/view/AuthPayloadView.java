@@ -1,4 +1,4 @@
 package com.lms.shared.view;
 
-public record AuthPayloadView(String token, UserView user) {
+public record AuthPayloadView(String token, UserView user, String expiresAt) {
 }

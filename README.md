@@ -21,7 +21,7 @@ docker compose up -d
 mvn -pl gateway -am spring-boot:run
 ```
 
-Базы: `lms_identity`, `lms_catalog`, `lms_enrollment`, `lms_assessment`, `lms_progress`, `lms_notification`, `lms_analytics`. Пользователь `lms` / `lms`, порт `5433` (чтобы не пересечься с локальным PostgreSQL на 5432).
+Базы: `lms_identity`, `lms_catalog`, `lms_enrollment`, `lms_assessment`, `lms_progress`, `lms_notification`, `lms_analytics`. Пользователь `lms` / `lms`, порт `5433` (чтобы не пересечься с локальным PostgreSQL на 5432). Redis для сессий — `localhost:6379`, контейнер `redis` в том же `docker compose`.
 
 Таблицы в единственном числе, как на схеме ЛР2. В ЛР4 добавлены `completed_lesson` (Progress) и колонка `course_stat.grade_count`, пароли хранятся bcrypt-хешем. Если PostgreSQL поднимали со схемой ЛР3, пересоздайте тома: `docker compose down -v && docker compose up -d`.
 
@@ -30,9 +30,7 @@ mvn -pl gateway -am spring-boot:run
 
 ## Пользователь запроса
 
-1. `Authorization: Bearer <token>` — токен из Mutation `login` или `register`.
-2. `X-User-Id: <id>` — для отладки.
-3. Без заголовков — тестовый студент `11111111-1111-1111-1111-111111111111`.
+`Authorization: Bearer <jwt>` — токен из Mutation `login` или `register`. Identity проверяет подпись JWT и активную сессию в Redis (TTL 2 часа). После `logout` или истечения TTL тот же токен отклоняется. Каталог (`catalog`, `catalogSummary`, `course`) доступен без входа. Личные Query и все остальные Mutation требуют сессию. Роли: студент записывается и сдаёт работы, преподаватель ведёт курс и ставит оценки, администратор назначает роли.
 
 Демо-пользователи (пароль `password`): `student@lms.local`, `teacher@lms.local`, `admin@lms.local`.
 
@@ -50,4 +48,4 @@ mutation {
 mvn test
 ```
 
-`GraphqlQueryTest` — чтение, `GraphqlMutationTest` — сквозной сценарий (курс → публикация → запись → урок → сдача → оценка → уведомления, витрина, рейтинг), фильтры и сводки каталога, назначение роли.
+`GraphqlQueryTest` — чтение, `GraphqlMutationTest` — сквозной сценарий, `GraphqlSecurityTest` — JWT, отзыв сессии в Redis и запрет операции по роли.

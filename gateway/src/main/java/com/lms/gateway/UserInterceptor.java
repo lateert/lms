@@ -1,6 +1,5 @@
 package com.lms.gateway;
 
-import com.lms.shared.Ids;
 import com.lms.shared.IdentityPort;
 import com.lms.shared.UserSnapshot;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +19,12 @@ public class UserInterceptor implements WebGraphQlInterceptor {
 
     @Override
     public Mono<WebGraphQlResponse> intercept(WebGraphQlRequest request, Chain chain) {
-        UserSnapshot user = resolveUser(request.getHeaders());
+        String token = bearer(request.getHeaders());
+        UserSnapshot user = token == null ? null : identity.validateSession(token);
         request.configureExecutionInput((input, builder) -> builder.graphQLContext(ctx -> {
+            if (token != null) {
+                ctx.put("token", token);
+            }
             if (user != null) {
                 ctx.put("user", user);
             }
@@ -29,13 +32,12 @@ public class UserInterceptor implements WebGraphQlInterceptor {
         return chain.next(request);
     }
 
-    private UserSnapshot resolveUser(HttpHeaders headers) {
+    private static String bearer(HttpHeaders headers) {
         String authorization = headers.getFirst(HttpHeaders.AUTHORIZATION);
-        if (authorization != null && authorization.startsWith(BEARER)) {
-            return identity.validateSession(authorization.substring(BEARER.length()).trim());
+        if (authorization == null || !authorization.startsWith(BEARER)) {
+            return null;
         }
-        // X-User-Id и студент по умолчанию — отладочный вход для GraphiQL без login.
-        String userId = headers.getFirst("X-User-Id");
-        return identity.getUser(userId == null || userId.isBlank() ? Ids.STUDENT : userId.trim());
+        String token = authorization.substring(BEARER.length()).trim();
+        return token.isEmpty() ? null : token;
     }
 }

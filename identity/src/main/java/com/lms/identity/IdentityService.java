@@ -25,9 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -41,9 +39,9 @@ public class IdentityService implements IdentityPort {
     private final RoleRepository roles;
     private final UserRoleRepository userRoles;
     private final EventPublisher events;
+    private final RedisSessionStore sessions;
+    private final JwtService jwt;
     private final PasswordEncoder passwords = new BCryptPasswordEncoder();
-    // Сессии живут в памяти процесса: после перезапуска шлюза нужно войти заново.
-    private final Map<String, String> sessions = new ConcurrentHashMap<>();
 
     @Transactional(transactionManager = "identityTx")
     public AuthPayloadView register(RegisterInput input) {
@@ -106,23 +104,28 @@ public class IdentityService implements IdentityPort {
     }
 
     @Override
-    @Transactional(readOnly = true, transactionManager = "identityTx")
     public UserSnapshot validateSession(String token) {
-        if (token == null || token.isBlank()) {
+        JwtService.Parsed parsed = jwt.parse(token);
+        if (parsed == null || !sessions.active(parsed.sessionId(), parsed.userId())) {
             return null;
         }
-        String userId = sessions.get(token);
-        if (userId == null) {
-            return null;
-        }
-        UserSnapshot user = getUser(userId);
+        UserSnapshot user = getUser(parsed.userId());
         return user != null && "active".equals(user.status()) ? user : null;
     }
 
+    @Override
+    public void logout(String token) {
+        JwtService.Parsed parsed = jwt.parse(token);
+        if (parsed == null || !sessions.active(parsed.sessionId(), parsed.userId())) {
+            throw AppException.unauthorized("Сессия недействительна");
+        }
+        sessions.close(parsed.sessionId());
+    }
+
     private AuthPayloadView issueToken(UserEntity user) {
-        String token = UUID.randomUUID().toString();
-        sessions.put(token, user.getId());
-        return new AuthPayloadView(token, UserView.from(toSnapshot(user)));
+        String sessionId = sessions.open(user.getId());
+        JwtService.Issued issued = jwt.issue(user.getId(), sessionId);
+        return new AuthPayloadView(issued.token(), UserView.from(toSnapshot(user)), issued.expiresAt());
     }
 
     private static String normalizeEmail(String email) {

@@ -6,6 +6,7 @@ import com.lms.enrollment.EnrollmentService;
 import com.lms.identity.IdentityService;
 import com.lms.notification.NotificationService;
 import com.lms.progress.ProgressService;
+import com.lms.shared.Roles;
 import com.lms.shared.UserSnapshot;
 import com.lms.shared.input.AddAssignmentInput;
 import com.lms.shared.input.AddLessonInput;
@@ -53,69 +54,77 @@ public class MutationController {
     }
 
     @MutationMapping
+    public boolean logout(@ContextValue(name = "user", required = false) UserSnapshot user,
+                          @ContextValue(name = "token", required = false) String token) {
+        Actors.require(user);
+        identity.logout(token);
+        return true;
+    }
+
+    @MutationMapping
     public UserView assignRole(@Argument AssignRoleInput input,
                                @ContextValue(name = "user", required = false) UserSnapshot user) {
-        return identity.assignRole(Actors.require(user), input);
+        return identity.assignRole(Access.allow(user, Roles.ADMIN), input);
     }
 
     @MutationMapping
     public CourseView createCourse(@Argument CreateCourseInput input,
                                    @ContextValue(name = "user", required = false) UserSnapshot user) {
-        return catalog.createCourse(Actors.require(user), input);
+        return catalog.createCourse(Access.allow(user, Roles.TEACHER, Roles.ADMIN), input);
     }
 
     @MutationMapping
     public ModuleView addModule(@Argument AddModuleInput input,
                                 @ContextValue(name = "user", required = false) UserSnapshot user) {
-        return catalog.addModule(Actors.require(user), input);
+        return catalog.addModule(Access.allow(user, Roles.TEACHER, Roles.ADMIN), input);
     }
 
     @MutationMapping
     public LessonView addLesson(@Argument AddLessonInput input,
                                 @ContextValue(name = "user", required = false) UserSnapshot user) {
-        return catalog.addLesson(Actors.require(user), input);
+        return catalog.addLesson(Access.allow(user, Roles.TEACHER, Roles.ADMIN), input);
     }
 
     @MutationMapping
     public CourseView publishCourse(@Argument String courseId,
                                     @ContextValue(name = "user", required = false) UserSnapshot user) {
-        return catalog.publishCourse(Actors.require(user), courseId);
+        return catalog.publishCourse(Access.allow(user, Roles.TEACHER, Roles.ADMIN), courseId);
     }
 
     @MutationMapping
     public AssignmentView addAssignment(@Argument AddAssignmentInput input,
                                         @ContextValue(name = "user", required = false) UserSnapshot user) {
-        return assessment.addAssignment(Actors.require(user), input);
+        return assessment.addAssignment(Access.allow(user, Roles.TEACHER, Roles.ADMIN), input);
     }
 
     @MutationMapping
     public EnrollmentView enrollCourse(@Argument String courseId,
                                        @ContextValue(name = "user", required = false) UserSnapshot user) {
-        return enrollment.enroll(Actors.require(user), courseId);
+        return enrollment.enroll(Access.allow(user, Roles.STUDENT), courseId);
     }
 
     @MutationMapping
     public EnrollmentView dropCourse(@Argument String courseId,
                                      @ContextValue(name = "user", required = false) UserSnapshot user) {
-        return enrollment.drop(Actors.require(user), courseId);
+        return enrollment.drop(Access.allow(user, Roles.STUDENT), courseId);
     }
 
     @MutationMapping
     public ProgressView completeLesson(@Argument String lessonId,
                                        @ContextValue(name = "user", required = false) UserSnapshot user) {
-        return progress.completeLesson(Actors.require(user), lessonId);
+        return progress.completeLesson(Access.allow(user, Roles.STUDENT), lessonId);
     }
 
     @MutationMapping
     public AttemptView submitAttempt(@Argument SubmitAttemptInput input,
                                      @ContextValue(name = "user", required = false) UserSnapshot user) {
-        return assessment.submitAttempt(Actors.require(user), input);
+        return assessment.submitAttempt(Access.allow(user, Roles.STUDENT), input);
     }
 
     @MutationMapping
     public AttemptView gradeAttempt(@Argument GradeAttemptInput input,
                                     @ContextValue(name = "user", required = false) UserSnapshot user) {
-        return assessment.gradeAttempt(Actors.require(user), input);
+        return assessment.gradeAttempt(Access.allow(user, Roles.TEACHER, Roles.ADMIN), input);
     }
 
     @MutationMapping
