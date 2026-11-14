@@ -5,7 +5,6 @@ import com.lms.enrollment.repo.EnrollmentRepository;
 import com.lms.shared.AppException;
 import com.lms.shared.CatalogPort;
 import com.lms.shared.CourseSnapshot;
-import com.lms.shared.EnrollmentPort;
 import com.lms.shared.EnrollmentSnapshot;
 import com.lms.shared.EventPublisher;
 import com.lms.shared.Roles;
@@ -29,21 +28,19 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class EnrollmentService implements EnrollmentPort {
+public class EnrollmentService {
     private static final Set<String> STATUSES = Set.of("active", "completed", "dropped");
 
     private final EnrollmentRepository enrollments;
     private final CatalogPort catalog;
     private final EventPublisher events;
 
-    @Override
     @Transactional(readOnly = true, transactionManager = "enrollmentTx")
     public boolean isEnrolled(String studentId, String courseId) {
         EnrollmentSnapshot enrollment = find(studentId, courseId);
         return enrollment != null && !"dropped".equals(enrollment.status());
     }
 
-    @Override
     @Transactional(readOnly = true, transactionManager = "enrollmentTx")
     public EnrollmentSnapshot find(String studentId, String courseId) {
         return enrollments.findByStudentIdAndCourseId(studentId, courseId)

@@ -16,6 +16,7 @@ public class UserInterceptor implements WebGraphQlInterceptor {
     private static final String BEARER = "Bearer ";
 
     private final IdentityPort identity;
+    private final EventDrain events;
 
     @Override
     public Mono<WebGraphQlResponse> intercept(WebGraphQlRequest request, Chain chain) {
@@ -29,7 +30,10 @@ public class UserInterceptor implements WebGraphQlInterceptor {
                 ctx.put("user", user);
             }
         }).build());
-        return chain.next(request);
+        return chain.next(request).flatMap(response -> {
+            events.awaitSettled();
+            return Mono.just(response);
+        });
     }
 
     private static String bearer(HttpHeaders headers) {

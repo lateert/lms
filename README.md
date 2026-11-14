@@ -1,15 +1,15 @@
 # LMS
 
-Maven multi-module: GraphQL-шлюз отдельно, внутренние сервисы — отдельные модули со своими базами PostgreSQL. Межсервисные вызовы — порты-заглушки gRPC, события — заглушка шины (Spring `ApplicationEventPublisher` вместо Kafka). Lombok используется для сущностей и сервисов.
+Maven multi-module: GraphQL-шлюз и внутренние сервисы со своими базами PostgreSQL. Синхронные проверки между сервисами идут по gRPC (protobuf, отдельные порты). События публикует Kafka producer и разбирает consumer. Lombok используется для сущностей и сервисов.
 
 ## Модули
 
 
 | Модуль                                                                                     | Роль                                                                                   |
 | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| `shared`                                                                                   | порты (будущий gRPC), события, input-типы, DTO, `AppException`, общая JPA-сборка       |
-| `identity`, `catalog`, `enrollment`, `assessment`, `progress`, `notification`, `analytics` | внутренние сервисы: бизнес-операции, проверки, обработчики событий; каждый со своей БД |
-| `gateway`                                                                                  | GraphQL Query и Mutation, заглушка шины событий, единственное запускаемое приложение   |
+| `shared`                                                                                   | protobuf-контракты, gRPC-клиенты, события, input-типы, DTO, `AppException`, общая JPA-сборка |
+| `identity`, `catalog`, `enrollment`, `assessment`, `progress`, `notification`, `analytics` | внутренние сервисы: бизнес-операции, проверки, gRPC-серверы Identity, Catalog и Enrollment |
+| `gateway`                                                                                  | GraphQL Query и Mutation, Kafka producer/consumer, единственное запускаемое приложение |
 
 
 ## Запуск
@@ -21,7 +21,9 @@ docker compose up -d
 mvn -pl gateway -am spring-boot:run
 ```
 
-Базы: `lms_identity`, `lms_catalog`, `lms_enrollment`, `lms_assessment`, `lms_progress`, `lms_notification`, `lms_analytics`. Пользователь `lms` / `lms`, порт `5433` (чтобы не пересечься с локальным PostgreSQL на 5432). Redis для сессий — `localhost:6379`, контейнер `redis` в том же `docker compose`.
+Базы: `lms_identity`, `lms_catalog`, `lms_enrollment`, `lms_assessment`, `lms_progress`, `lms_notification`, `lms_analytics`. Пользователь `lms` / `lms`, порт `5433` (чтобы не пересечься с локальным PostgreSQL на 5432). Redis для сессий — `localhost:6379`. Kafka — `localhost:9092`. Оба контейнера в том же `docker compose`.
+
+gRPC: Identity `localhost:9101`, Catalog `localhost:9102`, Enrollment `localhost:9103`. Шлюз проверяет сессию вызовом `ValidateSession`. Enrollment перед записью вызывает `GetPublishedCourse`, Assessment — `LessonExists` и `IsEnrolled`, Progress — `GetCourseCounts`. Если сервис не отвечает, клиент получает код `UNAVAILABLE`. События (`UserRegistered`, `CoursePublished`, `StudentEnrolled`, `LessonCompleted`, `AssignmentSubmitted`, `GradeAssigned`, `CourseRatingUpdated`) пишутся в топик `lms.events` после фиксации транзакции. Consumer создаёт уведомления, прогресс и витрину аналитики.
 
 Таблицы в единственном числе, как на схеме ЛР2. В ЛР4 добавлены `completed_lesson` (Progress) и колонка `course_stat.grade_count`, пароли хранятся bcrypt-хешем. Если PostgreSQL поднимали со схемой ЛР3, пересоздайте тома: `docker compose down -v && docker compose up -d`.
 
@@ -48,4 +50,4 @@ mutation {
 mvn test
 ```
 
-`GraphqlQueryTest` — чтение, `GraphqlMutationTest` — сквозной сценарий, `GraphqlSecurityTest` — JWT, отзыв сессии в Redis и запрет операции по роли.
+`GraphqlQueryTest` — чтение, `GraphqlMutationTest` — сквозной сценарий через gRPC и Kafka, `GraphqlSecurityTest` — JWT, отзыв сессии в Redis и запрет операции по роли. Нужны запущенные PostgreSQL, Redis и Kafka.

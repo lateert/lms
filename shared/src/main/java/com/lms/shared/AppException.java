@@ -28,6 +28,10 @@ public class AppException extends RuntimeException {
         return new AppException(message, "CONFLICT");
     }
 
+    public static AppException unavailable(String message) {
+        return new AppException(message, "UNAVAILABLE");
+    }
+
     public String getCode() {
         return code;
     }

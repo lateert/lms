@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.lms.grpc";
+
+package lms;
+
+// Контракты синхронных вызовов из лабораторной работы 2.
+// Дополнительные методы нужны тем же сценариям: карточка курса, список уроков, запись студента.
+
+service IdentityApi {
+  rpc ValidateSession (TokenRequest) returns (UserReply);
+  rpc GetUser (UserIdRequest) returns (UserReply);
+  rpc Logout (TokenRequest) returns (Empty);
+}
+
+service CatalogApi {
+  rpc GetPublishedCourse (CourseIdRequest) returns (CourseReply);
+  rpc GetCourse (CourseIdRequest) returns (CourseReply);
+  rpc LessonExists (LessonIdRequest) returns (LessonReply);
+  rpc ListLessonIds (CourseIdRequest) returns (LessonIdsReply);
+  rpc GetCourseCounts (CourseIdRequest) returns (CourseCountsReply);
+}
+
+service EnrollmentApi {
+  rpc IsEnrolled (EnrollmentRequest) returns (EnrolledReply);
+  rpc FindEnrollment (EnrollmentRequest) returns (EnrollmentReply);
+}
+
+message Empty {}
+
+message TokenRequest {
+  string token = 1;
+}
+
+message UserIdRequest {
+  string user_id = 1;
+}
+
+message UserReply {
+  bool found = 1;
+  string user_id = 2;
+  string email = 3;
+  string full_name = 4;
+  string status = 5;
+  repeated string roles = 6;
+}
+
+message CourseIdRequest {
+  string course_id = 1;
+}
+
+message LessonIdRequest {
+  string lesson_id = 1;
+}
+
+message CourseReply {
+  bool found = 1;
+  string id = 2;
+  string title = 3;
+  string difficulty = 4;
+  string status = 5;
+  double rating = 6;
+  string category_id = 7;
+  string category_name = 8;
+  string author_id = 9;
+}
+
+message LessonReply {
+  bool exists = 1;
+  string course_id = 2;
+}
+
+message LessonIdsReply {
+  repeated string lesson_ids = 1;
+}
+
+message CourseCountsReply {
+  int32 module_count = 1;
+  int32 lesson_count = 2;
+  int32 assignment_count = 3;
+}
+
+message EnrollmentRequest {
+  string student_id = 1;
+  string course_id = 2;
+}
+
+message EnrolledReply {
+  bool enrolled = 1;
+  string enrollment_id = 2;
+}
+
+message EnrollmentReply {
+  bool found = 1;
+  string enrollment_id = 2;
+  string student_id = 3;
+  string course_id = 4;
+  string status = 5;
+  string enrolled_at = 6;
+}

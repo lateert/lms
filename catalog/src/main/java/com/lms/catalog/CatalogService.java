@@ -9,7 +9,6 @@ import com.lms.catalog.repo.CourseRepository;
 import com.lms.catalog.repo.LessonRepository;
 import com.lms.catalog.repo.ModuleRepository;
 import com.lms.shared.AppException;
-import com.lms.shared.CatalogPort;
 import com.lms.shared.CourseCounts;
 import com.lms.shared.CourseSnapshot;
 import com.lms.shared.EventPublisher;
@@ -44,7 +43,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class CatalogService implements CatalogPort {
+public class CatalogService {
     private static final List<String> DIFFICULTIES = List.of("beginner", "intermediate", "advanced");
     private static final Set<String> CONTENT_TYPES = Set.of("text", "video", "quiz");
 
@@ -153,7 +152,6 @@ public class CatalogService implements CatalogPort {
         courses.findById(event.courseId()).ifPresent(c -> c.setRating(event.rating()));
     }
 
-    @Override
     @Transactional(readOnly = true, transactionManager = "catalogTx")
     public CourseSnapshot getPublishedCourse(String courseId) {
         return courses.findById(courseId)
@@ -162,19 +160,16 @@ public class CatalogService implements CatalogPort {
                 .orElse(null);
     }
 
-    @Override
     @Transactional(readOnly = true, transactionManager = "catalogTx")
     public CourseSnapshot getCourse(String courseId) {
         return courses.findById(courseId).map(this::toSnapshot).orElse(null);
     }
 
-    @Override
     @Transactional(readOnly = true, transactionManager = "catalogTx")
     public boolean lessonExists(String lessonId) {
         return lessons.existsById(lessonId);
     }
 
-    @Override
     @Transactional(readOnly = true, transactionManager = "catalogTx")
     public String lessonCourseId(String lessonId) {
         return lessons.findById(lessonId)
@@ -182,7 +177,6 @@ public class CatalogService implements CatalogPort {
                 .orElse(null);
     }
 
-    @Override
     @Transactional(readOnly = true, transactionManager = "catalogTx")
     public List<String> listLessonIds(String courseId) {
         return courses.findById(courseId)
@@ -193,7 +187,6 @@ public class CatalogService implements CatalogPort {
                 .orElse(List.of());
     }
 
-    @Override
     @Transactional(readOnly = true, transactionManager = "catalogTx")
     public CourseCounts getCourseCounts(String courseId) {
         return courses.findById(courseId)

@@ -8,7 +8,6 @@ import com.lms.identity.repo.UserRepository;
 import com.lms.identity.repo.UserRoleRepository;
 import com.lms.shared.AppException;
 import com.lms.shared.EventPublisher;
-import com.lms.shared.IdentityPort;
 import com.lms.shared.Roles;
 import com.lms.shared.Times;
 import com.lms.shared.UserSnapshot;
@@ -31,7 +30,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class IdentityService implements IdentityPort {
+public class IdentityService {
     private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private static final int MIN_PASSWORD = 6;
 
@@ -97,13 +96,11 @@ public class IdentityService implements IdentityPort {
         return UserView.from(toSnapshot(user));
     }
 
-    @Override
     @Transactional(readOnly = true, transactionManager = "identityTx")
     public UserSnapshot getUser(String userId) {
         return users.findById(userId).map(this::toSnapshot).orElse(null);
     }
 
-    @Override
     public UserSnapshot validateSession(String token) {
         JwtService.Parsed parsed = jwt.parse(token);
         if (parsed == null || !sessions.active(parsed.sessionId(), parsed.userId())) {
@@ -113,7 +110,6 @@ public class IdentityService implements IdentityPort {
         return user != null && "active".equals(user.status()) ? user : null;
     }
 
-    @Override
     public void logout(String token) {
         JwtService.Parsed parsed = jwt.parse(token);
         if (parsed == null || !sessions.active(parsed.sessionId(), parsed.userId())) {

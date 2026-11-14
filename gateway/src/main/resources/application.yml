@@ -14,6 +14,16 @@ spring:
     redis:
       host: localhost
       port: 6379
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: lms
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
 lms:
   db:
@@ -24,3 +34,7 @@ lms:
   auth:
     jwt-secret: lms-lab-jwt-secret-key-32bytes!!
     session-ttl: 2h
+  grpc:
+    identity: localhost:9101
+    catalog: localhost:9102
+    enrollment: localhost:9103

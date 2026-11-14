@@ -1,6 +1,7 @@
 package com.lms;
 
 import com.lms.config.LmsDbProperties;
+import com.lms.grpc.GrpcProperties;
 import com.lms.identity.AuthProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -12,7 +13,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
         DataSourceAutoConfiguration.class,
         HibernateJpaAutoConfiguration.class
 })
-@EnableConfigurationProperties({LmsDbProperties.class, AuthProperties.class})
+@EnableConfigurationProperties({LmsDbProperties.class, AuthProperties.class, GrpcProperties.class})
 public class LmsApplication {
     public static void main(String[] args) {
         SpringApplication.run(LmsApplication.class, args);
