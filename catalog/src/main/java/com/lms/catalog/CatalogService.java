@@ -30,6 +30,7 @@ import com.lms.shared.view.DifficultyCountView;
 import com.lms.shared.view.LessonView;
 import com.lms.shared.view.ModuleView;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +42,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CatalogService {
@@ -52,6 +54,7 @@ public class CatalogService {
     private final LessonRepository lessons;
     private final CategoryRepository categories;
     private final EventPublisher events;
+    private final CatalogCache cache;
 
     @Transactional(readOnly = true, transactionManager = "catalogTx")
     public List<CourseView> listPublished(CatalogFilterInput filter, CourseSortInput sort) {
@@ -100,6 +103,7 @@ public class CatalogService {
         String title = requireText(input.title(), "Укажите название модуля");
         int sortOrder = sortOrderOrNext(input.sortOrder(), modules.countByCourse_Id(course.getId()));
         ModuleEntity module = modules.save(new ModuleEntity(UUID.randomUUID().toString(), title, sortOrder, course));
+        cache.evict(course.getId());
         return new ModuleView(module.getId(), module.getTitle(), module.getSortOrder(), List.of());
     }
 
@@ -119,6 +123,7 @@ public class CatalogService {
         LessonEntity lesson = lessons.save(new LessonEntity(
                 UUID.randomUUID().toString(), title, contentType, sortOrder, module
         ));
+        cache.evict(course.getId());
         return new LessonView(lesson.getId(), lesson.getTitle(), lesson.getContentType(), lesson.getSortOrder());
     }
 
@@ -143,26 +148,35 @@ public class CatalogService {
                     throw AppException.conflict("В модуле «" + m.getTitle() + "» нет уроков");
                 });
         course.setStatus("published");
+        cache.evict(course.getId());
         events.publish(new CoursePublished(course.getId(), course.getTitle(), course.getAuthorId()));
+        log.info("Курс {} опубликован", course.getId());
         return toView(course);
     }
 
     @Transactional(transactionManager = "catalogTx", propagation = Propagation.REQUIRES_NEW)
     public void handleRatingUpdated(CourseRatingUpdated event) {
         courses.findById(event.courseId()).ifPresent(c -> c.setRating(event.rating()));
+        cache.evict(event.courseId());
     }
 
     @Transactional(readOnly = true, transactionManager = "catalogTx")
     public CourseSnapshot getPublishedCourse(String courseId) {
-        return courses.findById(courseId)
-                .filter(c -> "published".equals(c.getStatus()))
-                .map(this::toSnapshot)
-                .orElse(null);
+        CourseSnapshot course = getCourse(courseId);
+        return course != null && "published".equals(course.status()) ? course : null;
     }
 
     @Transactional(readOnly = true, transactionManager = "catalogTx")
     public CourseSnapshot getCourse(String courseId) {
-        return courses.findById(courseId).map(this::toSnapshot).orElse(null);
+        CourseSnapshot cached = cache.course(courseId);
+        if (cached != null) {
+            return cached;
+        }
+        CourseSnapshot loaded = courses.findById(courseId).map(this::toSnapshot).orElse(null);
+        if (loaded != null) {
+            cache.putCourse(loaded);
+        }
+        return loaded;
     }
 
     @Transactional(readOnly = true, transactionManager = "catalogTx")
@@ -189,13 +203,21 @@ public class CatalogService {
 
     @Transactional(readOnly = true, transactionManager = "catalogTx")
     public CourseCounts getCourseCounts(String courseId) {
-        return courses.findById(courseId)
+        CourseCounts cached = cache.counts(courseId);
+        if (cached != null) {
+            return cached;
+        }
+        CourseCounts loaded = courses.findById(courseId)
                 .map(c -> {
                     int moduleCount = c.getModules().size();
                     int lessonCount = c.getModules().stream().mapToInt(m -> m.getLessons().size()).sum();
                     return new CourseCounts(moduleCount, lessonCount);
                 })
                 .orElse(new CourseCounts(0, 0));
+        if (loaded.moduleCount() > 0 || loaded.lessonCount() > 0) {
+            cache.putCounts(courseId, loaded);
+        }
+        return loaded;
     }
 
     private List<CourseEntity> filterPublished(CatalogFilterInput filter) {

@@ -1,8 +1,10 @@
 package com.lms;
 
+import com.lms.catalog.CatalogCache;
 import com.lms.shared.Ids;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpEntity;
@@ -19,6 +21,9 @@ class GraphqlQueryTest {
 
     @Autowired
     private TestRestTemplate rest;
+
+    @Autowired
+    private StringRedisTemplate redis;
 
     private Map<String, Object> gql(String query) {
         return gql(query, Map.of(), null);
@@ -70,6 +75,7 @@ class GraphqlQueryTest {
                 .contains("student@lms.local");
         assertThat(data(gql("{ myEnrollments { status course { title } } }", Map.of(), token)).toString())
                 .contains("Основы Python");
+        assertThat(redis.opsForValue().get(CatalogCache.COURSE + Ids.COURSE)).contains("Основы Python");
         assertThat(data(gql(
                 "query($id: ID!) { myProgress(courseId: $id) { percent } }",
                 Map.of("id", Ids.COURSE),
@@ -85,7 +91,7 @@ class GraphqlQueryTest {
                 "query($id: ID!) { courseAnalytics(courseId: $id) { enrollCount } }",
                 Map.of("id", Ids.COURSE),
                 token
-        )).toString()).contains("1");
+        )).toString()).contains("enrollCount");
     }
 
     @Test

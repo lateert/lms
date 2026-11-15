@@ -15,6 +15,7 @@ import com.lms.shared.event.StudentEnrolled;
 import com.lms.shared.view.CourseView;
 import com.lms.shared.view.EnrollmentView;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EnrollmentService {
@@ -86,6 +88,7 @@ public class EnrollmentService {
                 UUID.randomUUID().toString(), actor.id(), courseId, Times.now(), "active"
         ));
         events.publish(new StudentEnrolled(enrollment.getId(), actor.id(), courseId, course.title()));
+        log.info("Студент {} записан на курс {}", actor.id(), courseId);
         return toView(enrollment);
     }
 

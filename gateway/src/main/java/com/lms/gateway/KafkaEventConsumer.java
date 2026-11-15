@@ -32,8 +32,10 @@ public class KafkaEventConsumer {
 
     @KafkaListener(topics = KafkaEventPublisher.TOPIC, groupId = "lms")
     public void onEvent(String payload) {
+        KafkaEventPublisher.EventMessage message = null;
         try {
-            KafkaEventPublisher.EventMessage message = json.readValue(payload, KafkaEventPublisher.EventMessage.class);
+            message = json.readValue(payload, KafkaEventPublisher.EventMessage.class);
+            log.info("Kafka {} получено, id {}", message.type(), message.id());
             switch (message.type()) {
                 case "UserRegistered" -> notifications.handle(json.treeToValue(message.body(), UserRegistered.class));
                 case "CoursePublished" -> {
@@ -64,14 +66,14 @@ public class KafkaEventConsumer {
                         catalog.handleRatingUpdated(json.treeToValue(message.body(), CourseRatingUpdated.class));
                 default -> log.warn("Неизвестное событие {}", message.type());
             }
+            log.info("Kafka {} обработано, id {}", message.type(), message.id());
         } catch (Exception ex) {
-            log.error("Не удалось обработать событие Kafka", ex);
+            String type = message == null ? "не разобрано" : message.type();
+            String id = message == null ? "-" : message.id();
+            log.error("Kafka {} не обработано, id {}. Сообщение пропущено, остальные события читаются дальше", type, id, ex);
         } finally {
-            try {
-                KafkaEventPublisher.EventMessage message = json.readValue(payload, KafkaEventPublisher.EventMessage.class);
+            if (message != null && message.id() != null) {
                 drain.finished(message.id());
-            } catch (Exception ex) {
-                log.error("Событие Kafka без идентификатора", ex);
             }
         }
     }

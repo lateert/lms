@@ -24,6 +24,15 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        retries: 2
+        request.timeout.ms: 3000
+        delivery.timeout.ms: 10000
+        retry.backoff.ms: 200
+
+logging:
+  pattern:
+    console: "%d{HH:mm:ss} %-5level [%X{scenario:-}] %logger{24} - %msg%n"
 
 lms:
   db:
@@ -38,3 +47,6 @@ lms:
     identity: localhost:9101
     catalog: localhost:9102
     enrollment: localhost:9103
+    timeout: 3s
+    retry-max: 2
+    retry-pause: 200ms
